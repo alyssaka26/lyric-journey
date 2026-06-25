@@ -1,0 +1,964 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>词旅 · Lyric Journey</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;500;600;700&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Noto+Sans+SC:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#1a1f2b;
+    --ink-soft:#5a6273;
+    --paper:#ffffff;
+    --paper-deep:#f4f6fa;
+    --accent:#c2603f;
+    --accent-2:#3b6ea5;
+    --gold:#caa45a;
+    --card:#fbf8f1;
+    --line:rgba(26,31,43,.12);
+    --shadow:rgba(40,50,70,.16);
+    --dot:rgba(100,150,220,.42);   /* blue marker dot tint */
+    /* 纸质歌词卡：米色纸 + 墨蓝字 */
+    --paper-card:#f0ece0;
+    --paper-card-hi:#f6f2e7;
+    --ink-blue:#2b5ba8;
+    --ink-blue-soft:#5d7fb5;
+  }
+  [data-theme="dark"]{
+    --ink:#eceff5;
+    --ink-soft:#9aa4b8;
+    --paper:#0b0e14;
+    --paper-deep:#070910;
+    --accent:#e0794f;
+    --accent-2:#6fa8dc;
+    --gold:#d8b86a;
+    --card:#171c27;
+    --line:rgba(236,239,245,.12);
+    --shadow:rgba(0,0,0,.5);
+    --dot:rgba(120,170,235,.55);
+    --paper-card:#1c2433;
+    --paper-card-hi:#222c3d;
+    --ink-blue:#8fb4e8;
+    --ink-blue-soft:#6b8bc0;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%}
+  body{
+    font-family:"Noto Sans SC",sans-serif;
+    background:radial-gradient(120% 90% at 50% 0%, var(--paper) 0%, var(--paper-deep) 80%);
+    color:var(--ink);overflow:hidden;
+    transition:background .6s ease,color .6s ease;
+  }
+  #app{position:relative;width:100vw;height:100vh;height:100dvh;overflow:hidden}
+
+  .topbar{
+    position:absolute;top:0;left:0;right:0;z-index:40;
+    display:flex;align-items:center;justify-content:space-between;
+    padding:18px 22px;pointer-events:none;
+    transition:opacity .35s ease;
+  }
+  /* 进入二级页时隐藏一级页的品牌/主题栏，避免与二级页标题栏重叠 */
+  body.region-open .topbar{opacity:0;pointer-events:none}
+  body.region-open .topbar *{pointer-events:none}
+  .brand{pointer-events:auto;display:flex;flex-direction:column;line-height:1}
+  .brand .zh{font-family:"Noto Serif SC",serif;font-weight:700;font-size:22px;letter-spacing:.18em}
+  .brand .en{
+    font-family:"Cormorant Garamond",serif;font-style:italic;font-size:13px;
+    letter-spacing:.32em;color:var(--ink-soft);margin-top:3px;text-transform:uppercase;
+  }
+  /* 胶囊滑块式深浅模式开关（参考 pill toggle 组件） */
+  .theme-btn{
+    pointer-events:auto;cursor:pointer;
+    box-sizing:border-box;position:relative;
+    display:flex;align-items:center;
+    width:64px;height:32px;padding:4px;
+    border-radius:9999px;
+    background:var(--paper);
+    border:1px solid var(--line);
+    transition:background .3s ease,border-color .3s ease;
+    box-shadow:0 4px 14px var(--shadow);
+    flex:0 0 auto;
+  }
+  /* 滑动的高亮圆，浅色在左、深色滑到右 */
+  .theme-btn::before{
+    content:"";position:absolute;top:4px;left:4px;
+    width:24px;height:24px;border-radius:50%;
+    background:var(--paper-deep);
+    transition:transform .3s ease,background .3s ease;
+    z-index:0;
+  }
+  [data-theme="dark"] .theme-btn::before{transform:translateX(32px);background:#27272a}
+  [data-theme="dark"] .theme-btn{background:#09090b;border-color:#27272a}
+  /* 两个固定图标槽：左太阳、右月亮 */
+  .theme-btn .tt-slot{
+    position:relative;z-index:1;
+    display:flex;align-items:center;justify-content:center;
+    width:24px;height:24px;
+  }
+  .theme-btn .tt-sun{margin-right:auto}
+  .theme-btn .tt-moon{margin-left:auto}
+  .theme-btn .tt-slot svg{width:16px;height:16px;display:block;transition:color .3s ease}
+  /* 浅色态：太阳在高亮圆上(深色描边)，月亮在外(较深) */
+  .theme-btn .tt-sun svg{color:#3f3f46}
+  .theme-btn .tt-moon svg{color:#a1a1aa}
+  /* 深色态：月亮在高亮圆上(亮白)，太阳在外(暗淡) */
+  [data-theme="dark"] .theme-btn .tt-sun svg{color:#71717a}
+  [data-theme="dark"] .theme-btn .tt-moon svg{color:#ffffff}
+
+  .globe-screen{
+    position:absolute;inset:0;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;
+    transition:opacity .5s ease, transform .5s ease;
+  }
+  .globe-screen.hidden{opacity:0;transform:scale(.96);pointer-events:none}
+  .tagline{position:absolute;top:84px;left:0;right:0;text-align:center;z-index:5;padding:0 24px;pointer-events:none}
+  .tagline h1{font-family:"Noto Serif SC",serif;font-weight:500;font-size:clamp(17px,4vw,27px);letter-spacing:.04em;line-height:1.5}
+  .tagline p{
+    font-family:"Cormorant Garamond",serif;font-style:italic;
+    font-size:clamp(13px,3vw,16px);color:var(--ink-soft);margin-top:6px;letter-spacing:.04em;
+  }
+  .globe-wrap{position:relative;width:min(92vw,620px);max-width:92vh;aspect-ratio:1;flex:0 0 auto;touch-action:none}
+  #cobe{width:100%;height:100%;display:block;cursor:grab;opacity:0;transition:opacity 1.2s ease;contain:layout paint size}
+  #cobe:active{cursor:grabbing}
+  .markers-layer{position:absolute;inset:0;pointer-events:none}
+
+  /* emoji sticker floating ABOVE the blue dot — matches reference */
+  .emoji-marker{
+    position:absolute;
+    transform:translate(-50%,-50%);   /* 中心对准坐标点，紧贴地球表面 */
+    cursor:pointer;pointer-events:auto;line-height:1;user-select:none;
+    filter:url(#sticker-outline) drop-shadow(0 2px 5px rgba(100,150,220,.38));
+    transition:opacity .3s ease;
+    will-change:transform,opacity;
+  }
+  .emoji-marker .glyph{
+    display:block;
+    /* 强制使用彩色 emoji 字体，避免 ⚽ 等被渲染成黑白镂空字形 */
+    font-family:"Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol","Noto Color Emoji",sans-serif;
+    animation:weather-float 3.4s ease-in-out infinite;
+    transition:transform .18s ease;
+  }
+  .emoji-marker:hover .glyph{transform:scale(1.25)}
+  .emoji-marker:hover .pin-label{opacity:1}
+  @keyframes weather-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-2px)}}
+  .pin-label{
+    position:absolute;top:-40px;left:50%;transform:translateX(-50%);
+    opacity:0;transition:opacity .2s ease;
+    background:var(--ink);color:var(--paper);font-size:11px;
+    padding:3px 9px;border-radius:20px;white-space:nowrap;
+    font-family:"Noto Sans SC";letter-spacing:.04em;pointer-events:none;
+    box-shadow:0 4px 12px var(--shadow);
+  }
+  .hint{
+    position:absolute;bottom:26px;left:0;right:0;text-align:center;
+    color:var(--ink-soft);font-size:12px;letter-spacing:.22em;z-index:5;
+    text-transform:uppercase;pointer-events:none;animation:breathe 3.4s ease-in-out infinite;
+  }
+  @keyframes breathe{0%,100%{opacity:.45}50%{opacity:.9}}
+  /* 地球底部：当前正对镜头国家的随机一句歌词 */
+  .now-lyric{
+    margin-top:18px;max-width:min(86vw,560px);text-align:center;
+    padding:0 20px;transition:opacity .5s ease;opacity:0;
+    min-height:118px;
+  }
+  .now-lyric.show{opacity:1}
+  .now-lyric .nl-head{
+    display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:10px;
+  }
+  .now-lyric .nl-emoji{font-size:20px;line-height:1;font-family:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif}
+  .now-lyric .nl-country{
+    font-family:"Noto Sans SC";font-size:12px;letter-spacing:.18em;
+    color:var(--ink-blue-soft);text-transform:none;
+  }
+  .now-lyric .nl-text{
+    font-family:"Noto Serif SC",serif;font-weight:500;font-size:clamp(15px,3.6vw,18px);
+    line-height:1.7;color:var(--ink-blue);letter-spacing:.02em;
+  }
+  .now-lyric .nl-text.latin{font-family:"Cormorant Garamond",serif;font-style:italic;font-size:clamp(16px,3.8vw,20px)}
+  .now-lyric .nl-trans{
+    font-family:"Noto Sans SC";font-weight:300;font-size:13px;line-height:1.7;
+    color:var(--ink-soft);margin-top:6px;
+  }
+  .now-lyric .nl-song{
+    font-family:"Cormorant Garamond",serif;font-style:italic;font-size:13px;
+    color:var(--ink-blue-soft);margin-top:8px;letter-spacing:.04em;
+  }
+
+  .region-screen{
+    position:absolute;inset:0;z-index:30;display:flex;flex-direction:column;
+    background:
+      radial-gradient(130% 100% at 50% 0%,
+        color-mix(in srgb, var(--paper-card) 35%, var(--paper)) 0%,
+        var(--paper-deep) 80%);
+    transform:translateY(100%);transition:transform .55s cubic-bezier(.6,.01,.2,1);
+  }
+  .region-screen.show{transform:translateY(0)}
+  .region-head{display:flex;align-items:center;gap:16px;padding:22px 24px 12px}
+  .back-btn{
+    cursor:pointer;border:1px solid var(--line);background:var(--card);color:var(--ink);
+    height:44px;padding:0 18px 0 14px;border-radius:30px;display:flex;align-items:center;gap:8px;
+    font-size:14px;font-family:"Noto Sans SC";letter-spacing:.05em;
+    box-shadow:0 4px 14px var(--shadow);transition:transform .2s ease;
+  }
+  .back-btn:hover{transform:translateX(-3px)}
+  .back-btn svg{width:16px;height:16px}
+  .region-title{display:flex;align-items:center;gap:14px;flex:1;min-width:0}
+  .region-title .big-emoji{font-size:38px;line-height:1;font-family:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif;filter:drop-shadow(0 3px 6px var(--shadow))}
+  .region-title .meta{min-width:0}
+  .region-title .country-row{display:flex;align-items:baseline;gap:10px;min-width:0;flex-wrap:wrap}
+  .region-title .country{
+    font-family:"Noto Serif SC",serif;font-weight:600;font-size:24px;letter-spacing:.04em;
+    color:var(--ink);white-space:nowrap;flex:0 0 auto;
+  }
+  .region-title .subtitle{
+    font-family:"Noto Serif SC",serif;font-weight:400;font-size:16px;letter-spacing:.06em;
+    color:var(--ink-soft);position:relative;padding-left:12px;white-space:nowrap;
+    overflow:hidden;text-overflow:ellipsis;min-width:0;
+  }
+  .region-title .subtitle::before{
+    content:"";position:absolute;left:0;top:50%;transform:translateY(-50%);
+    width:1px;height:13px;background:var(--line);
+  }
+  .region-title .sub{font-family:"Noto Serif SC",serif;color:var(--ink-soft);font-size:13px;letter-spacing:.1em;margin-top:5px}
+  .region-title .sub b{color:var(--ink-soft);font-weight:600;font-size:13px}
+
+  /* 线性横滑舞台：卡片一排铺开，整排平移 */
+  .carousel{
+    position:relative;flex:1;width:100%;overflow:hidden;
+    display:block;touch-action:pan-y;cursor:grab;user-select:none;
+  }
+  .carousel:active{cursor:grabbing}
+  .lyric-card{
+    position:absolute;left:50%;top:50%;
+    width:var(--card-size,360px);height:var(--card-h,440px);
+    background:var(--paper-card);
+    /* 细微纸纹：叠加极淡噪点感的双层渐变 */
+    background-image:
+      radial-gradient(rgba(120,110,90,.05) 1px, transparent 1px),
+      radial-gradient(rgba(120,110,90,.04) 1px, transparent 1px);
+    background-size:5px 5px, 7px 7px;
+    background-position:0 0, 2px 3px;
+    border-radius:6px;
+    padding:42px 38px 34px;display:flex;flex-direction:column;
+    cursor:pointer;overflow:hidden;
+    box-shadow:0 16px 44px -24px rgba(40,40,60,.4);
+    will-change:transform,opacity;
+    /* transform/opacity 过渡由 JS 动态设置（拖拽时关闭），此处只过渡背景与阴影 */
+    transition:box-shadow .45s ease, background-color .4s ease;
+  }
+  .lyric-card.is-center{
+    cursor:default;
+    background-color:var(--paper-card-hi);
+    box-shadow:0 26px 70px -22px rgba(40,40,60,.4);
+  }
+  .lyric-card .quote{font-family:"Cormorant Garamond",serif;font-size:74px;line-height:.6;color:var(--ink-blue);opacity:.32;height:30px}
+  .lyric-card .lyric{font-family:"Noto Serif SC",serif;font-weight:500;font-size:24px;line-height:1.75;letter-spacing:.03em;margin-top:16px;color:var(--ink-blue)}
+  .lyric-card .lyric.latin{font-family:"Cormorant Garamond",serif;font-size:28px;font-weight:500;line-height:1.55;letter-spacing:.01em}
+  .lyric-card .trans{
+    font-family:"Noto Serif SC",serif;font-weight:400;font-size:15px;line-height:1.8;color:var(--ink-blue-soft);
+    margin-top:16px;padding-top:14px;border-top:1px solid color-mix(in srgb, var(--ink-blue) 18%, transparent);
+  }
+  .lyric-card .grow{flex:1}
+  .lyric-card .foot{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-top:18px}
+  .lyric-card .song{min-width:0}
+  .lyric-card .song .name{font-family:"Noto Serif SC",serif;font-weight:600;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--ink-blue)}
+  .lyric-card .song .artist{font-size:13px;color:var(--ink-blue-soft);margin-top:3px}
+  .lyric-card .song .lang{display:inline-block;margin-top:8px;font-size:11px;letter-spacing:.08em;color:var(--ink-blue);border:1px solid color-mix(in srgb, var(--ink-blue) 30%, transparent);padding:2px 9px;border-radius:3px}
+  .play-btn{
+    flex:0 0 auto;width:48px;height:48px;border-radius:50%;cursor:pointer;
+    border:1.5px solid var(--ink-blue);background:transparent;color:var(--ink-blue);
+    display:grid;place-items:center;
+    transition:transform .2s ease, opacity .3s ease, background .25s ease, color .25s ease;
+  }
+  .play-btn:hover{transform:scale(1.08);background:var(--ink-blue);color:var(--paper-card-hi)}
+  .play-btn:active{transform:scale(.94)}
+  .play-btn svg{width:19px;height:19px;margin-left:2px}
+  /* 非中心卡的播放按钮隐藏，避免误触 */
+  .lyric-card:not(.is-center) .play-btn{opacity:0;pointer-events:none}
+  .card-index{position:absolute;top:26px;right:32px;font-family:"Cormorant Garamond",serif;font-style:italic;font-size:14px;color:var(--ink-blue-soft);opacity:.7;letter-spacing:.05em}
+  /* 左右切换按钮 */
+  .nav-arrows{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);display:flex;gap:14px;z-index:200}
+  .nav-btn{
+    width:52px;height:52px;border-radius:50%;cursor:pointer;
+    border:1px solid var(--line);background:var(--card);color:var(--ink);
+    display:grid;place-items:center;box-shadow:0 6px 18px var(--shadow);
+    transition:transform .2s ease, background .3s ease, color .3s ease;
+  }
+  .nav-btn:hover{background:var(--accent);color:#fff;border-color:var(--accent);transform:scale(1.06)}
+  .nav-btn:active{transform:scale(.94)}
+  .nav-btn svg{width:22px;height:22px}
+  .swipe-hint{text-align:center;color:var(--ink-soft);font-size:11px;letter-spacing:.24em;text-transform:uppercase;padding-bottom:16px;pointer-events:none}
+  .toast{
+    position:fixed;left:50%;bottom:40px;transform:translateX(-50%) translateY(20px);
+    background:var(--ink);color:var(--paper);padding:11px 20px;border-radius:30px;
+    font-size:13px;letter-spacing:.04em;opacity:0;pointer-events:none;z-index:99;
+    transition:opacity .3s ease, transform .3s ease;box-shadow:0 8px 24px var(--shadow);
+  }
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  /* ===== 开屏页 ===== */
+  .splash{
+    position:fixed;inset:0;z-index:100;
+    display:flex;align-items:center;justify-content:center;
+    background:radial-gradient(130% 100% at 50% 0%,
+      color-mix(in srgb, var(--paper-card) 30%, var(--paper)) 0%, var(--paper-deep) 80%);
+    transition:opacity .8s ease, visibility .8s ease;
+  }
+  .splash.hide{opacity:0;visibility:hidden;pointer-events:none}
+  .splash-inner{
+    width:min(92vw,1000px);padding:0 24px;
+    display:flex;flex-direction:column;gap:48px;position:relative;
+  }
+  .splash-brand{
+    display:flex;align-items:baseline;gap:14px;
+    animation:splashFade .9s ease both;
+  }
+  .splash-brand .zh{font-family:"Noto Serif SC",serif;font-weight:700;font-size:24px;letter-spacing:.2em;color:var(--ink)}
+  .splash-brand .en{
+    font-family:"Cormorant Garamond",serif;font-style:italic;font-size:14px;
+    letter-spacing:.32em;color:var(--ink-soft);text-transform:uppercase;
+  }
+  .splash-line{
+    display:flex;flex-direction:column;align-items:flex-start;gap:6px 0;
+    animation:splashFade 1s ease .15s both;
+  }
+  .splash-q{
+    font-family:"Noto Serif SC",serif;font-weight:600;
+    font-size:clamp(30px,6.5vw,64px);letter-spacing:.04em;color:var(--ink);
+    line-height:1.3;
+  }
+  .splash-a{
+    display:inline-flex;align-items:baseline;white-space:nowrap;
+    font-family:"Noto Serif SC",serif;font-weight:600;
+    font-size:clamp(30px,6.5vw,64px);letter-spacing:.04em;color:var(--ink-blue);
+    line-height:1.3;min-height:1.3em;
+  }
+  .tw-cursor{
+    display:inline-block;margin-left:4px;color:var(--ink-blue);
+    font-weight:400;animation:twBlink 1s steps(1) infinite;
+  }
+  @keyframes twBlink{0%,50%{opacity:1}50.01%,100%{opacity:0}}
+  /* 开始旅程按钮：左侧圆形，悬停展开填满，文字反色（仿 motion-button） */
+  .splash-enter{
+    align-self:flex-start;margin-top:8px;position:relative;
+    width:200px;height:56px;padding:4px;cursor:pointer;
+    border:none;border-radius:40px;outline:none;
+    background:transparent;
+    animation:splashFade 1s ease .4s both;
+  }
+  .splash-enter .se-circle{
+    display:block;height:48px;width:48px;margin:0;
+    border-radius:40px;background:var(--ink-blue);
+    box-shadow:0 8px 22px -6px color-mix(in srgb, var(--ink-blue) 60%, transparent);
+    transition:width .5s cubic-bezier(.65,0,.35,1);
+  }
+  .splash-enter:hover .se-circle{width:100%}
+  .splash-enter .se-icon{
+    position:absolute;top:50%;left:16px;transform:translateY(-50%);
+    display:grid;place-items:center;
+    transition:transform .5s cubic-bezier(.65,0,.35,1);
+  }
+  .splash-enter:hover .se-icon{transform:translate(6px,-50%)}
+  .splash-enter .se-icon svg{width:22px;height:22px;color:#fff}
+  .splash-enter .se-text{
+    position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);margin-left:14px;
+    font-family:"Noto Sans SC";font-size:16px;font-weight:500;letter-spacing:.08em;
+    white-space:nowrap;color:var(--ink);
+    transition:color .5s ease;
+  }
+  .splash-enter:hover .se-text{color:#fff}
+  @keyframes splashFade{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+
+  @media (max-width:520px){
+    .splash-inner{gap:32px}
+    .splash-a{min-height:1.4em}
+    .region-title .country{font-size:20px}
+    .region-title .subtitle{font-size:13px;padding-left:9px}
+    .region-head{gap:10px;padding:18px 16px 10px}
+    .region-title{gap:10px}
+    .region-title .big-emoji{font-size:30px}
+    .back-btn{padding:0 12px;font-size:13px}
+  }
+  @media (prefers-reduced-motion:reduce){*{transition-duration:.01ms !important;animation-duration:.01ms !important}}
+</style>
+</head>
+<body>
+<!-- 开屏页 -->
+<div id="splash" class="splash">
+  <div class="splash-inner">
+    <div class="splash-brand">
+      <span class="zh">词旅</span>
+      <span class="en">Lyric Journey</span>
+    </div>
+    <div class="splash-line">
+      <span class="splash-q">我们活着，是为了</span>
+      <span class="splash-a"><span id="twText"></span><span class="tw-cursor" id="twCursor">_</span></span>
+    </div>
+    <button class="splash-enter" id="splashEnter" aria-label="开始旅程">
+      <span class="se-circle" aria-hidden="true"></span>
+      <span class="se-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+      </span>
+      <span class="se-text">开始旅程</span>
+    </button>
+  </div>
+</div>
+
+<div id="app">
+  <div class="topbar">
+    <div class="brand"><span class="zh">词旅</span><span class="en">Lyric Journey</span></div>
+    <button class="theme-btn" id="themeBtn" role="switch" aria-label="切换深浅模式">
+      <span class="tt-slot tt-sun"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg></span>
+      <span class="tt-slot tt-moon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg></span>
+    </button>
+  </div>
+
+  <div class="globe-screen" id="globeScreen">
+    <div class="tagline">
+      <h1>旋转地球，聆听音符跳动下的人文脉搏</h1>
+      <p>Spin the globe, feel the human pulse beneath the notes.</p>
+    </div>
+    <div class="globe-wrap" id="globeWrap">
+      <canvas id="cobe"></canvas>
+      <div class="markers-layer" id="markersLayer"></div>
+    </div>
+    <div class="now-lyric" id="nowLyric">
+      <div class="nl-head"><span class="nl-emoji" id="nlEmoji"></span><span class="nl-country" id="nlCountry"></span></div>
+      <div class="nl-text" id="nlText"></div>
+      <div class="nl-trans" id="nlTrans"></div>
+      <div class="nl-song" id="nlSong"></div>
+    </div>
+    <div class="hint">拖动旋转 · 点击 Emoji 进入</div>
+  </div>
+
+  <div class="region-screen" id="regionScreen">
+    <div class="region-head">
+      <button class="back-btn" id="backBtn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+        地图
+      </button>
+      <div class="region-title">
+        <span class="big-emoji" id="rEmoji">🌸</span>
+        <div class="meta">
+          <div class="country-row">
+            <span class="country" id="rCountry">日本</span>
+            <span class="subtitle" id="rSubtitle">樱花落下的速度</span>
+          </div>
+          <div class="sub"><b id="rArea">亚洲</b> <span id="rCount">12 首</span></div>
+        </div>
+      </div>
+      <button class="theme-btn" id="themeBtn2" role="switch" aria-label="切换深浅模式" style="flex:0 0 auto">
+        <span class="tt-slot tt-sun"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg></span>
+        <span class="tt-slot tt-moon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg></span>
+      </button>
+    </div>
+    <div class="carousel" id="carousel">
+      <div class="nav-arrows">
+        <button class="nav-btn" id="prevBtn" aria-label="上一首">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+        </button>
+        <button class="nav-btn" id="nextBtn" aria-label="下一首">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="swipe-hint">← 拖动或左右箭头浏览 →</div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <!-- sticker outline filter (white border around emoji), matching reference -->
+  <svg width="0" height="0" style="position:absolute">
+    <defs>
+      <filter id="sticker-outline" x="-20%" y="-20%" width="140%" height="140%">
+        <!-- white sticker halo built from the alpha silhouette, then the
+             FULL-COLOR emoji painted on top so light emojis (⚽ etc.) stay solid -->
+        <feMorphology in="SourceAlpha" result="Dilated" operator="dilate" radius="2"/>
+        <feFlood flood-color="#ffffff" result="OutlineColor"/>
+        <feComposite in="OutlineColor" in2="Dilated" operator="in" result="Outline"/>
+        <feMerge>
+          <feMergeNode in="Outline"/>
+          <feMergeNode in="SourceGraphic"/>
+        </feMerge>
+      </filter>
+    </defs>
+  </svg>
+</div>
+
+<script>
+const MARKERS = [{"code":"CN-MAIN","emoji":"🏮","lat":35.0,"lng":103.0,"country":"中国","area":"亚洲","songs":[{"songName":"七里香","singer":"周杰伦","language":"普通话","lyric":"雨下整夜，我的爱溢出就像雨水。","lyricCn":""},{"songName":"平凡之路","singer":"朴树","language":"普通话","lyric":"我曾经失落失望失掉所有方向，直到看见平凡才是唯一的答案。","lyricCn":""},{"songName":"起风了","singer":"买辣椒也用券","language":"普通话","lyric":"我仍感叹于世界之大，也沉醉于儿时情话。","lyricCn":""},{"songName":"稻香","singer":"周杰伦","language":"普通话","lyric":"还记得你说家是唯一的城堡，随着稻香河流继续奔跑。","lyricCn":""},{"songName":"成都","singer":"赵雷","language":"普通话","lyric":"走到玉林路的尽头，坐在小酒馆的门口。","lyricCn":""},{"songName":"消愁","singer":"毛不易","language":"普通话","lyric":"一杯敬朝阳，一杯敬月光。","lyricCn":""},{"songName":"光年之外","singer":"邓紫棋","language":"普通话","lyric":"缘分让我们相遇乱世以外，命运却要我们危难中相爱。","lyricCn":""},{"songName":"孤勇者","singer":"陈奕迅","language":"普通话","lyric":"爱你孤身走暗巷，爱你不跪的模样。","lyricCn":""},{"songName":"晴天","singer":"周杰伦","language":"普通话","lyric":"从前从前有个人爱你很久。","lyricCn":""},{"songName":"年少有为","singer":"李荣浩","language":"普通话","lyric":"假如我年少有为不自卑，懂得什么是珍贵。","lyricCn":""},{"songName":"往后余生","singer":"马良","language":"普通话","lyric":"往后余生，风雪是你，平淡是你。","lyricCn":""},{"songName":"漠河舞厅","singer":"柳爽","language":"普通话","lyric":"晚星就像你的眼睛杀人又放火。","lyricCn":""}],"subtitle":"烟火人间"},{"code":"JP","emoji":"🌸","lat":36.2,"lng":138.3,"country":"日本","area":"亚洲","songs":[{"songName":"Lemon","singer":"米津玄师","language":"日语","lyric":"夢ならばどれほどよかったでしょう。","lyricCn":"如果这一切都是梦境该有多好。"},{"songName":"青鸟","singer":"生物股长","language":"日语","lyric":"羽ばたいたら戻らないと言って。","lyricCn":"展翅高飞之后，便不再回头。"},{"songName":"起风了","singer":"高桥优","language":"日语","lyric":"今でもあなたはわたしの光。","lyricCn":"时至今日，你仍是我的光芒。"},{"songName":"极乐净土","singer":"GARNiDELiA","language":"日语","lyric":"今宵は宵よ、儚く夢うつつ。","lyricCn":"今夜良宵，浮生若梦。"},{"songName":"樱花纷飞时","singer":"中岛美嘉","language":"日语","lyric":"桜の雨、いつかは。","lyricCn":"樱花细雨，终有落幕之时。"},{"songName":"曾经我也想过一了百了","singer":"中岛美嘉","language":"日语","lyric":"生きていたんだよ。","lyricCn":"我曾真切活过。"},{"songName":"Secret Base","singer":"ZONE","language":"日语","lyric":"君と夏の終わり、将来の夢。","lyricCn":"与你共度的夏日尾声，未来的梦想。"},{"songName":"红昭愿","singer":"majiko","language":"日语","lyric":"心が止まる前に、君に会いたい。","lyricCn":"在心跳停止之前，想要见到你。"},{"songName":"HANA BIYORI","singer":"花泽香菜","language":"日语","lyric":"幸せな気持ち、届けたい。","lyricCn":"想把满心的幸福传递给你。"},{"songName":"Unravel","singer":"TK from 凛冽时雨","language":"日语","lyric":"ほどけて崩れて、消えていく。","lyricCn":"层层瓦解，渐渐消散。"},{"songName":"我的歌声里","singer":"西野加奈","language":"日语","lyric":"ずっとそばにいるよ。","lyricCn":"我会一直陪在你身边。"},{"songName":"春夏秋冬","singer":"鹿乃","language":"日语","lyric":"四季が巡る、君と共に。","lyricCn":"四季轮回，与你相伴。"}],"subtitle":"樱花落下的速度"},{"code":"CN-TW","emoji":"🪕","lat":23.7,"lng":121.0,"country":"中国台湾","area":"亚洲","songs":[{"songName":"后来","singer":"刘若英","language":"普通话","lyric":"后来我总算学会了如何去爱，可惜你早已远去，消失在人海。","lyricCn":""},{"songName":"温柔","singer":"五月天","language":"普通话","lyric":"不打扰，是我的温柔。","lyricCn":""},{"songName":"小幸运","singer":"田馥甄","language":"普通话","lyric":"原来你是我最想留住的幸运。","lyricCn":""},{"songName":"稻香","singer":"周杰伦","language":"普通话","lyric":"笑一个吧，功成名就不是目的。","lyricCn":""},{"songName":"过火","singer":"张信哲","language":"普通话","lyric":"怎么忍心怪你，犯了错。","lyricCn":""},{"songName":"隐形的翅膀","singer":"张韶涵","language":"普通话","lyric":"我知道我一直有双隐形的翅膀，带我飞飞过绝望。","lyricCn":""},{"songName":"倔强","singer":"五月天","language":"普通话","lyric":"我不怕千万人阻挡，只怕自己投降。","lyricCn":""},{"songName":"月亮代表我的心","singer":"邓丽君","language":"普通话","lyric":"你问我爱你有多深，月亮代表我的心。","lyricCn":""},{"songName":"告白气球","singer":"周杰伦","language":"普通话","lyric":"亲爱的，爱上你，从那天起。","lyricCn":""},{"songName":"断点","singer":"张敬轩","language":"普通话","lyric":"静静陪你走了好远好远，连眼睛红了都没有发现。","lyricCn":""},{"songName":"最初的梦想","singer":"范玮琪","language":"普通话","lyric":"最初的梦想紧握在手上，最想要去的地方怎么能半路返航。","lyricCn":""},{"songName":"淘汰","singer":"陈奕迅","language":"普通话","lyric":"说不上爱别说谎，就一点喜欢。","lyricCn":""}],"subtitle":"岛屿情书"},{"code":"KR","emoji":"🦋","lat":36.5,"lng":127.8,"country":"韩国","area":"亚洲","songs":[{"songName":"Spring Day","singer":"防弹少年团","language":"韩语","lyric":"봄날이 오면 결국 모든 게 다 지나갈 거야。","lyricCn":"待到春日来临，终会一切过往。"},{"songName":"Dynamite","singer":"防弹少年团","language":"英语","lyric":"I'm a dynamite.","lyricCn":"我热烈而璀璨。"},{"songName":"Love Scenario","singer":"iKON","language":"韩语","lyric":"사랑은 타이밍。","lyricCn":"爱情皆是时机。"},{"songName":"Palette","singer":"IU","language":"韩语","lyric":"이제 나는 나를 알아。","lyricCn":"如今我终于读懂自己。"},{"songName":"Celebrity","singer":"IU","language":"韩语","lyric":"세상의 모든 별이 너를 비춰。","lyricCn":"世间所有星光，皆为你闪耀。"},{"songName":"Fantastic Baby","singer":"BIGBANG","language":"韩语","lyric":"Wow fantastic baby。","lyricCn":"璀璨耀眼的少年。"},{"songName":"After LIKE","singer":"IVE","language":"韩语","lyric":"너를 좋아해 정말。","lyricCn":"我是真的喜欢你。"},{"songName":"Hype Boy","singer":"NewJeans","language":"韩语","lyric":"너만을 기다려 왔어。","lyricCn":"我一直只为你等待。"},{"songName":"Cherry Bomb","singer":"NCT 127","language":"韩语","lyric":"새로운 느낌 너에게 줄게。","lyricCn":"予你全新心动体验。"},{"songName":"Roller Coaster","singer":"CHUNG HA","language":"韩语","lyric":"마음이 너에게 달려가。","lyricCn":"我的心奔向于你。"},{"songName":"Time For The Moon Night","singer":"GFRIEND","language":"韩语","lyric":"달빛 아래 너와 나。","lyricCn":"月光之下你与我。"},{"songName":"Don't Start Now","singer":"TWICE","language":"英语","lyric":"Don't start now, don't start now.","lyricCn":"就此止步，别再沉溺。"}],"subtitle":"心动信号"},{"code":"IN","emoji":"🪇","lat":20.6,"lng":79.0,"country":"印度","area":"南亚","songs":[{"songName":"Jai Ho","singer":"A.R. Rahman","language":"印地语","lyric":"Jai ho, jai ho.","lyricCn":"胜利归于你。"},{"songName":"Tum Hi Ho","singer":"Arijit Singh","language":"印地语","lyric":"Tum hi ho, zindagi ab tum hi ho.","lyricCn":"只有你，我的生命只有你。"},{"songName":"Chaiyya Chaiyya","singer":"Sukhwinder Singh","language":"印地语","lyric":"Chaiyya chaiyya, chaiyya chaiyya, chal chaiyya chaiyya.","lyricCn":"走在茶车上，茶车之上。"},{"songName":"Kabira","singer":"Tochi Raina","language":"印地语","lyric":"Kabira, kabira, maan ja.","lyricCn":"卡比拉啊，请你应允。"},{"songName":"Vande Mataram","singer":"A.R. Rahman","language":"梵语/孟加拉语","lyric":"Vande mataram, sujalang suphalang.","lyricCn":"向母亲致敬，富饶的土地。"}],"subtitle":"宝莱坞之梦"},{"code":"IT","emoji":"🎭","lat":42.8,"lng":12.8,"country":"意大利","area":"欧洲","songs":[{"songName":"Grande Amore","singer":"Il Volo","language":"意大利语","lyric":"Dimmi perché quando penso, penso solo a te.","lyricCn":"告诉我为何，脑海里想的总只有你。"},{"songName":"Con te partirò","singer":"Andrea Bocelli","language":"意大利语","lyric":"Con te partirò, paesi che non ho mai visto.","lyricCn":"与你同行，去那些我从未见过的国度。"}],"subtitle":"咏叹的深情"},{"code":"GB","emoji":"🎸","lat":54.0,"lng":-2.0,"country":"英国","area":"欧洲","songs":[{"songName":"Someone Like You","singer":"Adele","language":"英语","lyric":"Never mind, I'll find someone like you.","lyricCn":"没关系，我会找到另一个如你一般的人。"},{"songName":"Bohemian Rhapsody","singer":"Queen","language":"英语","lyric":"Is this the real life? Is this just fantasy?","lyricCn":"这是真实人生，还是虚幻梦境？"},{"songName":"Shape of You","singer":"Ed Sheeran","language":"英语","lyric":"I'm in love with the shape of you.","lyricCn":"我沉醉于你的曼妙身姿。"},{"songName":"2 Become 1","singer":"Spice Girls","language":"英语","lyric":"Candle light and soul forever.","lyricCn":"灯火长明，灵魂相伴至永恒。"},{"songName":"Perfect","singer":"Ed Sheeran","language":"英语","lyric":"I found a love for me.","lyricCn":"我觅得属于自己的挚爱。"},{"songName":"Fix You","singer":"Coldplay","language":"英语","lyric":"Lights will guide you home.","lyricCn":"星光灯火，终将引你归乡。"},{"songName":"Yellow","singer":"Coldplay","language":"英语","lyric":"Look at the stars, look how they shine for you.","lyricCn":"仰望繁星，它们皆为你璀璨。"},{"songName":"Rolling in the Deep","singer":"Adele","language":"英语","lyric":"The scars of your love remind me of us.","lyricCn":"你留下的爱痕，时刻提醒着我们的过往。"},{"songName":"Stay With Me","singer":"Sam Smith","language":"英语","lyric":"Stay with me, please stay with me.","lyricCn":"留在我身边，请别离开。"},{"songName":"Dancing Queen","singer":"ABBA","language":"英语","lyric":"You are the dancing queen, young and sweet.","lyricCn":"你是舞动的女王，年少温柔烂漫。"},{"songName":"Heat Waves","singer":"Glass Animals","language":"英语","lyric":"Sometimes all I think about is you.","lyricCn":"我的脑海之中，时时皆是你。"},{"songName":"Someone You Loved","singer":"Lewis Capaldi","language":"英语","lyric":"Now the day bleeds into nightfall.","lyricCn":"白昼落幕，夜色渐临。"}],"subtitle":"雾都剧场"},{"code":"IS","emoji":"🌋","lat":64.9,"lng":-19.0,"country":"冰岛","area":"欧洲","subtitle":"极地回声","songs":[{"songName":"Human Behaviour","singer":"Björk","language":"英语","lyric":"There's definitely, definitely, definitely no logic to human behaviour.","lyricCn":"人类的行为，绝对、绝对、绝对没有任何逻辑可言。"},{"songName":"Hoppípolla","singer":"Sigur Rós","language":"冰岛语/ Vonlenska（希望语）","lyric":"Hoppípolla, hoppípolla, við förum í vondu lagi.","lyricCn":"蹦蹦跳跳，蹦蹦跳跳，我们要去惹点麻烦了。"}]},{"code":"US","emoji":"🗽","lat":39.8,"lng":-98.5,"country":"美国","area":"美洲","songs":[{"songName":"My Heart Will Go On","singer":"Celine Dion","language":"英语","lyric":"Near, far, wherever you are, I believe that the heart does go on.","lyricCn":"无论远近、无论何方，我心依旧滚烫。"},{"songName":"Yesterday Once More","singer":"Carpenters","language":"英语","lyric":"Every sha-la-la, every wo-o wo-o, still shines.","lyricCn":"每一段旋律，依旧熠熠生辉。"},{"songName":"Dilemma","singer":"Nelly、Kelly Rowland","language":"英语","lyric":"I love you and I need you.","lyricCn":"我爱你，我也需要你。"},{"songName":"Uptown Funk","singer":"Mark Ronson","language":"英语","lyric":"Don't believe me just watch.","lyricCn":"无需多言，眼见为实。"},{"songName":"Blinding Lights","singer":"The Weeknd","language":"英语","lyric":"I said, ooh, I'm blinded by the lights.","lyricCn":"我沉溺于璀璨灯火之中。"},{"songName":"Take Me To Your Heart","singer":"Michael Learns To Rock","language":"英语","lyric":"Take me to your heart, take me to your soul.","lyricCn":"将我纳入你心，融入你魂。"},{"songName":"Love Story","singer":"Taylor Swift","language":"英语","lyric":"We were both young when I first saw you.","lyricCn":"初遇之时，你我尚且年少。"},{"songName":"Faded","singer":"Alan Walker","language":"英语","lyric":"Where are you now, where are you now.","lyricCn":"你如今身在何方。"},{"songName":"Try Everything","singer":"Shakira","language":"英语","lyric":"I won't give up, no I won't give in.","lyricCn":"我绝不放弃，绝不妥协。"},{"songName":"Counting Stars","singer":"OneRepublic","language":"英语","lyric":"I feel something so right doing the wrong thing.","lyricCn":"明知相悖，却仍觉心安。"},{"songName":"See You Again","singer":"Wiz Khalifa","language":"英语","lyric":"It's been a long day without you my friend.","lyricCn":"老友别离，度日漫长。"},{"songName":"Good 4 U","singer":"Olivia Rodrigo","language":"英语","lyric":"Well good for you, you look happy and healthy.","lyricCn":"真好啊，你依旧眉眼舒展、安然无恙。"}],"subtitle":"自由回响"},{"code":"BR","emoji":"⚽","lat":-14.2,"lng":-51.9,"country":"巴西","area":"南美洲","songs":[{"songName":"Garota de Ipanema","singer":"Tom Jobim & Vinicius","language":"葡萄牙语","lyric":"Olha que coisa mais linda, mais cheia de graça.","lyricCn":"看那多么美丽的身影，充满优雅。"},{"songName":"Águas de Março","singer":"Elis Regina & Tom Jobim","language":"葡萄牙语","lyric":"É pau, é pedra, é o fim do caminho.","lyricCn":"是木，是石，是路的尽头。"},{"songName":"Ai Se Eu Te Pego","singer":"Michel Teló","language":"葡萄牙语","lyric":"Nossa nossa, assim você me mata.","lyricCn":"天哪，你这样会要了我的命。"}],"subtitle":"热情桑巴"},{"code":"AR","emoji":"🧉","lat":-38.4,"lng":-63.6,"country":"阿根廷","area":"南美洲","subtitle":"探戈独白","songs":[{"songName":"El Día Que Me Quieras","singer":"Carlos Gardel","language":"西班牙语","lyric":"El día que me quieras, la rosa se vestirá de fiesta.","lyricCn":"当你爱上我的那一天，玫瑰也会盛装打扮。"},{"songName":"Don't Cry for Me Argentina","singer":"Madonna / Andrew Lloyd Webber","language":"英语","lyric":"Don't cry for me Argentina, the truth is I never left you.","lyricCn":"不要为我哭泣阿根廷，其实我从未离开过你。"},{"songName":"Gracias a la Vida","singer":"Mercedes Sosa","language":"西班牙语","lyric":"Gracias a la vida que me ha dado tanto.","lyricCn":"感谢生命，给予我如此之多。"}]},{"code":"ES","emoji":"💃","lat":40.2,"lng":-3.7,"country":"西班牙","area":"欧洲","songs":[{"songName":"Bulerías","singer":"Rosalia","language":"西班牙语","lyric":"Yo no tuve que hacer, na'ita que yo no quisiera.","lyricCn":"我从未做过一件自己不愿做的事。"},{"songName":"Despacito","singer":"Luis Fonsi ft. Daddy Yankee","language":"西班牙语","lyric":"Despacito, quiero respirar tu cuello despacito.","lyricCn":"慢慢来，我想慢慢呼吸你颈间的气息。"}],"subtitle":"慢板的缠绵"},{"code":"NG","emoji":"🪘","lat":9.1,"lng":8.7,"country":"西非","area":"非洲","songs":[{"songName":"Essence","singer":"Wizkid ft. Tems","language":"英语/尼日利亚皮钦","lyric":"You got me feeling like I'm floating, girl you got me gone.","lyricCn":"你让我感觉漂浮在空中，女孩你让我神魂颠倒。"},{"songName":"Last Last","singer":"Burna Boy","language":"英语","lyric":"If I had the chance to do it all again, I'd do it all again.","lyricCn":"如果给我重来的机会，我仍会如此选择。"},{"songName":"Ye","singer":"Burna Boy","language":"英语/约鲁巴语","lyric":"Ye ye ye ye, oh Lord, ye ye ye ye.","lyricCn":"主啊，请听我的祷告。"}],"subtitle":"节奏的根脉"},{"code":"ZA","emoji":"🦁","lat":-30.6,"lng":22.9,"country":"南非","area":"非洲","songs":[{"songName":"Pata Pata","singer":"Miriam Makeba","language":"科萨语","lyric":"Pata pata, pata pata, that's the name of the dance.","lyricCn":"帕塔帕塔，这就是这支舞蹈的名字。"},{"songName":"Asimbonanga","singer":"Johnny Clegg & Savuka","language":"祖鲁语/英语","lyric":"Asimbonanga, asimbonanga, uMandela.","lyricCn":"我们看不见他，我们看不见曼德拉。"},{"songName":"Homeless","singer":"Ladysmith Black Mambazo & Paul Simon","language":"祖鲁语","lyric":"We are homeless, homeless, moonlight sleeping on a midnight lake.","lyricCn":"我们无家可归，在午夜湖面上伴着月光入眠。"}],"subtitle":"彩虹之音"},{"code":"AU","emoji":"🏄","lat":-25.3,"lng":133.8,"country":"澳大利亚","area":"大洋洲","songs":[{"songName":"Down Under","singer":"Men at Work","language":"英语","lyric":"Do you come from a land down under, where women glow and men plunder.","lyricCn":"你是否来自那片南方的土地，那里女人发光男人掠夺。"},{"songName":"Torn","singer":"Natalie Imbruglia","language":"英语","lyric":"I'm all out of faith, this is how I feel.","lyricCn":"我已失去信念，这就是我的感受。"},{"songName":"Somebody That I Used to Know","singer":"Gotye ft. Kimbra","language":"英语","lyric":"But you didn't have to cut me off, make out like it never happened.","lyricCn":"但你大可不必与我断绝，装作一切未曾发生。"},{"songName":"I Am Australian","singer":"The Seekers","language":"英语","lyric":"We are one, but we are many, and from all the lands on earth we come.","lyricCn":"我们是一体也是万千，从世上万土而来。"},{"songName":"Solid Rock","singer":"Goanna","language":"英语","lyric":"Standing on solid rock, looking at the bay.","lyricCn":"立于磐石之上，望向海湾。"},{"songName":"Beds Are Burning","singer":"Midnight Oil","language":"英语","lyric":"The time has come to say fair's fair, to pay the rent, to pay our share.","lyricCn":"是时候说句公道话，付租金，尽我们的责。"},{"songName":"True Blue","singer":"John Williamson","language":"英语","lyric":"True blue, is it me and you.","lyricCn":"真正的蓝，是你和我。"}],"subtitle":"南十字星下"},{"code":"NZ","emoji":"🌺","lat":-40.9,"lng":174.9,"country":"新西兰","area":"大洋洲","songs":[{"songName":"Pokarekare Ana","singer":"毛利传统民歌","language":"毛利语","lyric":"Pokarekare ana, ngā wai o Waiapu.","lyricCn":"怀阿普河的波涛，汹涌澎湃。"},{"songName":"Don't Dream It's Over","singer":"Crowded House","language":"英语","lyric":"Hey now, hey now, don't dream it's over.","lyricCn":"嘿，别以为一切都结束了。"},{"songName":"Royals","singer":"Lorde","language":"英语","lyric":"I've never seen a diamond in the flesh, I cut my teeth on wedding singers.","lyricCn":"我从未亲眼见过钻石，在婚礼歌手的伴奏里长大。"},{"songName":"How Bizarre","singer":"OMC","language":"英语","lyric":"How bizarre, how bizarre.","lyricCn":"多么奇妙。"}],"subtitle":"海风与歌谣"}];
+
+// ===== 开屏页打字机 =====
+(function(){
+  const answers = ["⛷️追逐","🎧聆听","🗺️丈量地理","🏛️探索文明","发现地球村🌍的交响乐章"];
+  const elText = document.getElementById('twText');
+  const elCursor = document.getElementById('twCursor');
+  const splash = document.getElementById('splash');
+  const enterBtn = document.getElementById('splashEnter');
+  if(!elText || !splash) return;
+
+  const DELETE=30, INIT=500;
+  // 前四个词打字更快(40ms)，最后一句较长稍慢(65ms)
+  function typeSpeed(idx){ return idx<4 ? 40 : 65; }
+  // 前四个词停留短(650ms)，最后一个词停留久(2200ms)后再循环
+  function waitTime(idx){ return idx<4 ? 650 : 2200; }
+  let ti=0, ci=0, deleting=false, timer=null, stopped=false;
+  // 按字素簇切分（emoji + 变体选择符算一个单位），优先用 Intl.Segmenter
+  const _seg = (typeof Intl!=='undefined' && Intl.Segmenter) ? new Intl.Segmenter('zh',{granularity:'grapheme'}) : null;
+  function graphemes(str){
+    if(_seg) return Array.from(_seg.segment(str), s=>s.segment);
+    return Array.from(str);   // 回退
+  }
+
+  function tick(){
+    if(stopped) return;
+    const chars=graphemes(answers[ti]);   // 字素切分，🗺️ 等不被拆碎
+    const len=chars.length;
+    if(!deleting){
+      if(ci<len){
+        elText.textContent=chars.slice(0,++ci).join('');
+        timer=setTimeout(tick, typeSpeed(ti));
+      }else{
+        timer=setTimeout(()=>{ deleting=true; tick(); }, waitTime(ti));
+      }
+    }else{
+      if(ci>0){
+        elText.textContent=chars.slice(0,--ci).join('');
+        timer=setTimeout(tick, DELETE);
+      }else{
+        deleting=false;
+        ti=(ti+1)%answers.length;
+        timer=setTimeout(tick, 220);
+      }
+    }
+  }
+  timer=setTimeout(tick, INIT);
+
+  function enter(){
+    if(stopped) return; stopped=true;
+    clearTimeout(timer);
+    splash.classList.add('hide');
+    // 动画结束后彻底移除，避免遮挡
+    setTimeout(()=>{ splash.style.display='none'; }, 850);
+  }
+  enterBtn && enterBtn.addEventListener('click', enter);
+})();
+</script>
+<script type="module">
+  // cobe ships as an ES module (export default), so loading it via a normal
+  // synchronous tag does NOT expose window.createGlobe. Import it here instead.
+  let loaded = false;
+  async function loadCobe(){
+    const sources = [
+      'https://esm.sh/cobe@0.6.3',
+      'https://cdn.skypack.dev/cobe@0.6.3',
+      'https://esm.run/cobe@0.6.3'
+    ];
+    for(const url of sources){
+      try{
+        const mod = await import(/* @vite-ignore */ url);
+        const fn = mod.default || mod.createGlobe || mod;
+        if(typeof fn === 'function'){ window.createGlobe = fn; return true; }
+      }catch(e){ /* try next */ }
+    }
+    return false;
+  }
+  loadCobe().then(ok=>{
+    if(ok){ window.__startApp && window.__startApp(); }
+    else {
+      const w=document.getElementById('globeWrap');
+      if(w){ w.innerHTML='<div style="display:grid;place-items:center;height:100%;color:var(--ink-soft);font-size:14px;text-align:center;padding:20px;line-height:1.8">地球组件加载失败，请检查网络连接后刷新。<br><span style="font-size:12px;opacity:.7">cobe failed to load</span></div>'; }
+    }
+  });
+</script>
+<script>
+window.__startApp = function(){
+  const wrap=document.getElementById('globeWrap');
+  const canvas=document.getElementById('cobe');
+  const layer=document.getElementById('markersLayer');
+  const globeScreen=document.getElementById('globeScreen');
+  const regionScreen=document.getElementById('regionScreen');
+  const toastEl=document.getElementById('toast');
+
+  let phi=0, dragPhi=0, curTheta=0.18, dragTheta=0;
+  let pointer=null, isDragging=false;
+  let curPhiTotal=0, curThetaTotal=0.18;
+  const SPEED=0.0016;
+
+  // 统一计算当前旋转角（自转 + 拖拽），地球渲染和图标投影共用同一份，保证同步
+  function syncAngles(){
+    curPhiTotal = phi + dragPhi;
+    curThetaTotal = Math.max(-0.6, Math.min(0.6, curTheta + dragTheta));
+  }
+
+  const markerEls=MARKERS.map(m=>{
+    const el=document.createElement('div');
+    el.className='emoji-marker';
+    el.innerHTML='<span class="glyph">'+m.emoji+'</span><span class="pin-label">'+m.country+'</span>';
+    el.addEventListener('click',e=>{e.stopPropagation(); if(!justDragged) openRegion(m);});
+    layer.appendChild(el);
+    return el;
+  });
+
+  const themeBtn=document.getElementById('themeBtn');
+  const themeBtn2=document.getElementById('themeBtn2');
+  let dark=window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches;
+  function applyTheme(){
+    document.documentElement.setAttribute('data-theme',dark?'dark':'light');
+    themeBtn.setAttribute('aria-checked',dark?'true':'false');
+    if(themeBtn2) themeBtn2.setAttribute('aria-checked',dark?'true':'false');
+    rebuildGlobe();
+  }
+  themeBtn.addEventListener('click',()=>{dark=!dark;applyTheme();});
+  if(themeBtn2) themeBtn2.addEventListener('click',()=>{dark=!dark;applyTheme();});
+
+  let globe=null;
+  function makeGlobe(){
+    const w=Math.min(wrap.clientWidth, wrap.clientHeight||wrap.clientWidth); if(!w) return;
+    const dpr=Math.min(window.devicePixelRatio||1,2);
+    // light dotted globe like the reference; markerColor = the small blue dots
+    const base   = dark?[0.20,0.24,0.32]:[0.98,0.98,1.0];
+    const marker = dark?[0.45,0.62,0.92]:[0.40,0.70,0.95];
+    const glow   = dark?[0.04,0.06,0.10]:[0.94,0.93,0.91];
+    globe=window.createGlobe(canvas,{
+      devicePixelRatio:dpr, width:w*dpr, height:w*dpr,
+      phi:0, theta:0.18, dark:dark?1:0, diffuse:1.5,
+      mapSamples:16000, mapBrightness:dark?7:10,
+      baseColor:base, markerColor:marker, glowColor:glow,
+      markerElevation:0.12, opacity:0.85,
+      markers:MARKERS.map(m=>({location:[m.lat,m.lng], size:0.025})),
+      onRender:(state)=>{
+        if(!isDragging) phi+=SPEED;
+        // 角度由 syncAngles() 统一计算（图标与地球共用），这里只负责把值交给 cobe
+        syncAngles();
+        state.phi=curPhiTotal; state.theta=curThetaTotal;
+      }
+    });
+    setTimeout(()=>canvas.style.opacity='1',60);
+  }
+  function rebuildGlobe(){ if(globe){globe.destroy();globe=null;canvas.style.opacity='0';} makeGlobe(); }
+
+  // 严格采用 cobe 内部投影公式（与它渲染大陆用的完全一致，保证图标贴合大陆）：
+  //   latR = lat·π/180,  lonR = lng·π/180 − π   （−π 是 cobe 固有部分，不可改）
+  //   p = ( −cosLat·cos(lonR),  sin(latR),  cosLat·sin(lonR) )
+  //   再绕 Y 轴旋转 phi（与 cobe state.phi 同号），绕 X 轴旋转 theta
+  // emoji 落点半径 / 容器半径。cobe 地球本体小于容器（四周是 glow 光晕），
+  // 用 1.0 会让靠边缘的 emoji 飞出球外。若 emoji 偏外调小、偏内调大。
+  const GLOBE_R = 0.66;       // 蓝点贴大陆用的半径
+  // emoji 在蓝点基础上沿径向外探，外探量 ∝ rho²（中心几乎不动，越靠边缘探得越远）。
+  // 这样正面国家的 emoji 仍贴着大陆，转到边缘的 emoji 会探出地球轮廓、浮在球外（仿图2），
+  // 不再“沉进海里”。
+  const EMOJI_OUT = 0.34;
+  function project(lat,lng){
+    const cw=wrap.clientWidth, ch=wrap.clientHeight;
+    const D=Math.min(cw, ch||cw);
+    const R=D/2;
+    const cxScreen=cw/2, cyScreen=ch/2;
+    const latR=lat*Math.PI/180;
+    const lonR=lng*Math.PI/180 - Math.PI;
+    const cosLat=Math.cos(latR);
+    const px=-cosLat*Math.cos(lonR);
+    const py= Math.sin(latR);
+    const pz= cosLat*Math.sin(lonR);
+    const cy=Math.cos(curPhiTotal), sy=Math.sin(curPhiTotal);
+    let x =  cy*px + sy*pz;
+    let z = -sy*px + cy*pz;
+    let y =  py;
+    const cx=Math.cos(curThetaTotal), sx=Math.sin(curThetaTotal);
+    const y2 = cx*y - sx*z;
+    const z2 = sx*y + cx*z;
+    y=y2; z=z2;
+    const dotX = cxScreen + x*R*GLOBE_R;
+    const dotY = cyScreen - y*R*GLOBE_R;
+    // 径向外探：量 ∝ rho²，中心≈0、边缘最大
+    const rho = Math.hypot(x, y);                 // 0(中心)..1(边缘)
+    const out = R*EMOJI_OUT*rho*rho;              // 外探距离(px)，rho²让中心更稳
+    const dirX = rho>1e-4 ? x/rho : 0;
+    const dirY = rho>1e-4 ? -y/rho : 0;
+    const emojiX = dotX + dirX*out;
+    const emojiY = dotY + dirY*out;
+    return {
+      x:emojiX, y:emojiY,
+      dotX, dotY,
+      visible:z>0.02,
+      scale:0.82+0.30*Math.max(0,z), z
+    };
+  }
+
+  function tick(){
+    syncAngles();   // 先取最新旋转角，确保拖拽时图标与地球同步
+    let topIdx=-1, topZ=-2;
+    for(let i=0;i<MARKERS.length;i++){
+      const m=MARKERS[i], el=markerEls[i], p=project(m.lat,m.lng);
+      if(p.visible){
+        el.style.opacity='1';
+        el.style.left=p.x+'px';
+        el.style.top=p.y+'px';                 // 中心对准坐标点，不再上抬
+        el.style.fontSize=(38*p.scale)+'px';    // 放大图标
+        el.style.zIndex=String(Math.round(p.z*100));
+        el.style.pointerEvents='auto';
+      }else{ el.style.opacity='0'; el.style.pointerEvents='none'; }
+      if(p.z>topZ){ topZ=p.z; topIdx=i; }   // 记录最正对镜头的国家
+    }
+    updateNowLyric(topIdx, topZ);
+    requestAnimationFrame(tick);
+  }
+
+  // 底部歌词：显示当前正对镜头国家的随机一句，切换国家时才换
+  let curCenterIdx=-1, nlEls=null;
+  function updateNowLyric(idx, z){
+    if(!nlEls){
+      nlEls={
+        box:document.getElementById('nowLyric'),
+        emoji:document.getElementById('nlEmoji'),
+        country:document.getElementById('nlCountry'),
+        text:document.getElementById('nlText'),
+        trans:document.getElementById('nlTrans'),
+        song:document.getElementById('nlSong')
+      };
+    }
+    // z 太小说明没有国家正对镜头（如正好转到海洋），淡出
+    if(idx<0 || z<0.25){
+      if(curCenterIdx!==-1){ curCenterIdx=-1; nlEls.box.classList.remove('show'); }
+      return;
+    }
+    if(idx===curCenterIdx) return;   // 还是同一个国家，不变
+    // 迟滞：新国家需明显更正对（z 更高一截）才切换，避免临界抖动
+    if(curCenterIdx>=0){
+      const curM=MARKERS[curCenterIdx];
+      const curP=project(curM.lat,curM.lng);
+      if(curP.z>0.2 && z < curP.z+0.08) return;
+    }
+    curCenterIdx=idx;
+    const m=MARKERS[idx];
+    const s=m.songs[Math.floor(Math.random()*m.songs.length)];  // 随机一句
+    const latin=!['普通话','粤语','日语','韩语'].includes(s.language);
+    const showTrans=s.lyricCn&&s.lyricCn.trim()&&s.lyricCn.trim()!==s.lyric.trim();
+    // 淡出→换内容→淡入
+    nlEls.box.classList.remove('show');
+    clearTimeout(updateNowLyric._t);
+    updateNowLyric._t=setTimeout(()=>{
+      nlEls.emoji.textContent=m.emoji;
+      nlEls.country.textContent=m.country;
+      nlEls.text.textContent='“'+s.lyric+'”';
+      nlEls.text.className='nl-text'+(latin?' latin':'');
+      nlEls.trans.textContent=showTrans?s.lyricCn:'';
+      nlEls.song.textContent='——《'+s.songName+'》 '+s.singer;
+      nlEls.box.classList.add('show');
+    },180);
+  }
+
+  let justDragged=false, moved=0;
+  canvas.addEventListener('pointerdown',e=>{
+    isDragging=true; pointer={x:e.clientX,y:e.clientY}; moved=0;
+    canvas.setPointerCapture(e.pointerId);
+  });
+  window.addEventListener('pointermove',e=>{
+    if(!isDragging||!pointer) return;
+    const dx=e.clientX-pointer.x, dy=e.clientY-pointer.y;
+    moved+=Math.abs(dx)+Math.abs(dy);
+    dragPhi+=dx/180;
+    curTheta=Math.max(-0.55,Math.min(0.55,curTheta+dy/400));
+    pointer={x:e.clientX,y:e.clientY};
+  });
+  window.addEventListener('pointerup',()=>{
+    if(isDragging){ phi+=dragPhi; dragPhi=0; justDragged=moved>6; setTimeout(()=>justDragged=false,60); }
+    isDragging=false; pointer=null;
+  });
+
+  const carousel=document.getElementById('carousel');
+  const navArrows=carousel.querySelector('.nav-arrows');
+  function langClass(lang){ return ['普通话','粤语','日语','韩语'].includes(lang)?'':'latin'; }
+  function playLink(s){ return 'https://music.163.com/#/search/m/?s='+encodeURIComponent(s.songName+' '+s.singer)+'&type=1'; }
+
+  // 线性横滑状态
+  let cardData=[];      // 当前国家的歌曲
+  let cardEls=[];       // 卡片 DOM，顺序与 cardData 一致
+  let activeIndex=0;    // 当前居中卡的索引
+  let dragDX=0;         // 拖拽中的实时位移(px)，用于跟手
+  let cardSize=360, cardH=440, fitScale=1;
+
+  function computeCardSize(){
+    const vw = window.innerWidth, vh=window.innerHeight;
+    const wide = window.matchMedia('(min-width:640px)').matches;
+    // 卡片采用固定的理想尺寸（不随视口压缩宽度），保证内部排版恒定
+    cardSize = wide ? 380 : 360;
+    cardH = Math.min(470, Math.max(380, vh*0.56));
+    // 极限情况下对整张卡片等比缩放：以“中心卡宽度 + 两侧各露出一截”所需的
+    // 横向空间为基准；若超过可用宽度则按比例缩小。高度同理留出余量。
+    const needW = cardSize * 1.18;       // 中心卡 + 两侧露出部分的有效占宽
+    const availW = vw - 24;              // 视口宽度减去最小边距
+    const availH = vh * 0.62;            // 纵向可用空间
+    const sW = availW / needW;
+    const sH = availH / cardH;
+    fitScale = Math.min(1, sW, sH);      // 只缩小、不放大
+    carousel.style.setProperty('--card-size', cardSize+'px');
+    carousel.style.setProperty('--card-h', cardH+'px');
+  }
+
+  function buildCard(s, idx, total){
+    const card=document.createElement('div');card.className='lyric-card';
+    const showTrans=s.lyricCn&&s.lyricCn.trim()&&s.lyricCn.trim()!==s.lyric.trim();
+    card.innerHTML=
+      '<div class="card-index">'+String(idx+1).padStart(2,'0')+' / '+String(total).padStart(2,'0')+'</div>'+
+      '<div class="quote">&ldquo;</div>'+
+      '<div class="lyric '+langClass(s.language)+'">'+esc(s.lyric)+'</div>'+
+      (showTrans?'<div class="trans">'+esc(s.lyricCn)+'</div>':'')+
+      '<div class="grow"></div>'+
+      '<div class="foot"><div class="song">'+
+        '<div class="name">'+esc(s.songName)+'</div>'+
+        '<div class="artist">'+esc(s.singer)+'</div>'+
+        '<span class="lang">'+esc(s.language)+'</span>'+
+      '</div>'+
+      '<button class="play-btn" title="去网易云搜索播放"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button>'+
+      '</div>';
+    card.querySelector('.play-btn').addEventListener('click',e=>{
+      e.stopPropagation(); window.open(playLink(s),'_blank','noopener');
+      showToast('正在前往音乐平台搜索 · '+s.songName);
+    });
+    return card;
+  }
+
+  // 线性排布：每张卡按 (i - activeIndex) 横向铺开，整排跟随平移
+  // dragging=true 时关闭过渡，跟手实时移动
+  function layout(dragging){
+    const stepX=cardSize*0.82*fitScale;  // 相邻卡间距（随整体缩放）
+    const offset=dragDX/(cardSize*fitScale); // 拖拽折算成“格”的偏移
+    cardEls.forEach((el,i)=>{
+      const pos=(i-activeIndex) - offset; // 距中心的位置（含拖拽实时偏移）
+      const dist=Math.abs(pos);
+      const isCenter=dist<0.5;
+      const tx=stepX*pos;
+      const scale=Math.max(0.86, 1-dist*0.07)*fitScale; // 叠加整体缩放
+      const ty=isCenter ? 0 : 6;          // 非中心略微下沉
+      el.style.transition = dragging ? 'none' : 'transform .45s cubic-bezier(.25,.8,.3,1), opacity .45s ease, box-shadow .45s ease';
+      el.style.transform='translate(-50%,-50%) translateX('+tx+'px) translateY('+ty+'px) scale('+scale+')';
+      el.classList.toggle('is-center', isCenter);
+      el.style.opacity = String(Math.max(0, 1 - dist*0.32));
+      el.style.zIndex = String(100 - Math.round(dist*10));
+      el.style.pointerEvents = dist<2.5 ? 'auto' : 'none';
+    });
+  }
+
+  function goTo(idx, dragging){
+    activeIndex=Math.max(0, Math.min(cardData.length-1, idx));  // 不循环，到头即停
+    layout(dragging);
+    updateArrows();
+  }
+  function handleMove(steps){ goTo(activeIndex+steps, false); }
+
+  // 到头时禁用对应箭头
+  function updateArrows(){
+    const prev=document.getElementById('prevBtn'), next=document.getElementById('nextBtn');
+    const atStart=activeIndex<=0, atEnd=activeIndex>=cardData.length-1;
+    prev.style.opacity=atStart?'.35':'1'; prev.style.pointerEvents=atStart?'none':'auto';
+    next.style.opacity=atEnd?'.35':'1';   next.style.pointerEvents=atEnd?'none':'auto';
+  }
+
+  function openRegion(m){
+    document.getElementById('rEmoji').textContent=m.emoji;
+    document.getElementById('rCountry').textContent=m.country;
+    document.getElementById('rSubtitle').textContent=m.subtitle||'';
+    document.getElementById('rArea').textContent=m.area;
+    document.getElementById('rCount').textContent=m.songs.length+' 首';
+
+    cardEls.forEach(el=>el.remove());
+    cardData=m.songs.slice();
+    cardEls=[]; activeIndex=0; dragDX=0;
+    computeCardSize();
+    cardData.forEach((s,idx)=>{
+      const el=buildCard(s, idx, cardData.length);
+      el.addEventListener('click',()=>{ if(!dragMoved && idx!==activeIndex) goTo(idx,false); });
+      carousel.insertBefore(el, navArrows);
+      cardEls.push(el);
+    });
+    goTo(0,false);
+
+    regionScreen.classList.add('show'); globeScreen.classList.add('hidden');
+    document.body.classList.add('region-open');
+  }
+
+  document.getElementById('prevBtn').addEventListener('click',()=>handleMove(-1));
+  document.getElementById('nextBtn').addEventListener('click',()=>handleMove(1));
+  window.addEventListener('keydown',e=>{
+    if(!document.body.classList.contains('region-open')) return;
+    if(e.key==='ArrowLeft') handleMove(-1);
+    else if(e.key==='ArrowRight') handleMove(1);
+  });
+
+  // 鼠标 / 触摸 横向拖滑：跟手平移，松手吸附到最近一格
+  let dragStartX=null, dragMoved=false;
+  function dragStart(x){ dragStartX=x; dragDX=0; dragMoved=false; }
+  function dragMove(x){
+    if(dragStartX===null) return;
+    dragDX=x-dragStartX;
+    if(Math.abs(dragDX)>4) dragMoved=true;
+    layout(true);   // 跟手实时移动（无过渡）
+  }
+  function dragEnd(){
+    if(dragStartX===null) return;
+    // 拖动超过卡宽的 22% 即翻页，否则回弹
+    const moved=-dragDX/(cardSize*fitScale);
+    let target=activeIndex + (moved>0.22?1 : moved<-0.22?-1 : 0);
+    dragStartX=null; dragDX=0;
+    goTo(target,false);
+    setTimeout(()=>{dragMoved=false;},0);
+  }
+  carousel.addEventListener('pointerdown',e=>{ if(e.target.closest('.nav-btn')||e.target.closest('.play-btn')) return; dragStart(e.clientX); });
+  window.addEventListener('pointermove',e=>{ if(dragStartX!==null) dragMove(e.clientX); });
+  window.addEventListener('pointerup',dragEnd);
+  carousel.addEventListener('touchstart',e=>{ dragStart(e.touches[0].clientX); },{passive:true});
+  carousel.addEventListener('touchmove',e=>{ dragMove(e.touches[0].clientX); },{passive:true});
+  carousel.addEventListener('touchend',dragEnd,{passive:true});
+
+  // 鼠标滚轮 / 触控板横向滚动切换：横滑用 deltaX，竖滚鼠标用 deltaY 也可横切
+  let wheelAccum=0, wheelLock=false, wheelStopTimer=null;
+  carousel.addEventListener('wheel',e=>{
+    if(!document.body.classList.contains('region-open')) return;
+    const d = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+    if(d===0) return;
+    e.preventDefault();           // 拦截页面滚动，转为卡片横切
+
+    // 只要还在收到 wheel 事件，就把“解锁”推迟到滚动彻底停止 150ms 之后。
+    // 触控板一次滑动会持续发送惯性事件（可达 1~2 秒），这样能保证一次滑动只翻一格。
+    clearTimeout(wheelStopTimer);
+    wheelStopTimer=setTimeout(()=>{ wheelLock=false; wheelAccum=0; }, 150);
+
+    if(wheelLock) return;          // 已翻过且滚动尚未停止 → 忽略后续惯性
+    wheelAccum += d;
+    if(Math.abs(wheelAccum) > 40){
+      handleMove(wheelAccum>0 ? 1 : -1);
+      wheelAccum = 0;
+      wheelLock = true;            // 翻一格后锁定，直到滚动停止才解锁
+    }
+  }, {passive:false});
+
+  window.addEventListener('resize',()=>{ if(cardData.length){ computeCardSize(); layout(false); } });
+
+  document.getElementById('backBtn').addEventListener('click',()=>{
+    regionScreen.classList.remove('show'); globeScreen.classList.remove('hidden');
+    document.body.classList.remove('region-open');
+  });
+  function showToast(msg){
+    toastEl.textContent=msg; toastEl.classList.add('show');
+    clearTimeout(showToast._t); showToast._t=setTimeout(()=>toastEl.classList.remove('show'),2200);
+  }
+  function esc(s){return (s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+
+  // robust init: keep trying until the wrap has a real width, then build the globe
+  function ensureGlobe(tries){
+    if(globe) return;
+    if(wrap.clientWidth>0){ makeGlobe(); return; }
+    if(tries>0) requestAnimationFrame(()=>ensureGlobe(tries-1));
+  }
+  applyTheme();              // sets theme + attempts a build
+  const ro=new ResizeObserver(()=>{ if(wrap.clientWidth>0&&!globe) makeGlobe(); });
+  ro.observe(wrap);
+  ensureGlobe(120);          // ~2s of rAF retries as a safety net
+  tick();
+  let _rt; window.addEventListener('resize',()=>{ clearTimeout(_rt); _rt=setTimeout(rebuildGlobe,150); });
+};
+</script>
+</body>
+</html>
